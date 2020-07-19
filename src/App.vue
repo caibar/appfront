@@ -2,9 +2,9 @@
 	<v-app>
 		<v-navigation-drawer v-model="drawer" :clipped="$vuetify.breakpoint.lgAndUp" app>
 			<v-list>
-				<v-list-item v-for="item in items" :key="item.text" link>
+				<v-list-item v-for="item in items" :key="item.text" :to="item.text" link>
 					<v-list-item-icon>
-						<v-icon to="obras">{{ item.icon }}</v-icon>
+						<v-icon>{{ item.icon }}</v-icon>
 					</v-list-item-icon>
 					<v-list-item-content>
 						<v-list-item-title>{{ item.text }}</v-list-item-title>

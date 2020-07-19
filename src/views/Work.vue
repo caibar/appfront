@@ -1,370 +1,258 @@
 <template>
 	<v-container fluid>
-		<v-simple-table fixed-header height="300px">
-			<template v-slot:default>
-				<thead>
-					<tr>
-						<th class="text-left">Nome</th>
-						<th class="text-left">CEP</th>
-						<th class="text-left">Status</th>
-					</tr>
-				</thead>
-				<tbody>
-					<tr v-for="item in works" :key="item.name">
-						<td>{{ item.name }}</td>
-						<td>{{ item.cep }}</td>
-						<td>{{ item.status }}</td>
-					</tr>
-				</tbody>
-			</template>
-		</v-simple-table>
-		<v-btn bottom color="green" dark fab fixed right @click="dialog = !dialog">
+		<WorkTable :headers="headers" :data="works" @editItem="editWork" @deleteItem="deleteWork" />
+		<v-btn fab bottom right color="primary" dark fixed @click="add">
 			<v-icon>mdi-plus</v-icon>
 		</v-btn>
 		<v-dialog v-model="dialog" width="800px">
-			<v-card ref="form">
-				<v-card-title class="grey darken-2">Criar projeto</v-card-title>
-				<v-container>
-					<v-row class="mx-2">
-						<v-col cols="12">
-							<v-card-text>
-								<v-text-field
-									ref="name"
-									v-model="name"
-									:rules="[() => !!name || 'This field is required']"
-									:error-messages="errorMessages"
-									label="Full Name"
-									placeholder="John Doe"
-									required
-								></v-text-field>
-								<v-text-field
-									ref="address"
-									v-model="address"
-									:rules="[
-              () => !!address || 'This field is required',
-              () => !!address && address.length <= 25 || 'Address must be less than 25 characters']"
-									label="Address Line"
-									placeholder="Snowy Rock Pl"
-									counter="25"
-									required
-								></v-text-field>
-								<v-text-field
-									ref="city"
-									v-model="city"
-									:rules="[() => !!city || 'This field is required']"
-									label="City"
-									placeholder="El Paso"
-									required
-								></v-text-field>
-								<v-text-field
-									ref="state"
-									v-model="state"
-									:rules="[() => !!state || 'This field is required']"
-									label="State/Province/Region"
-									required
-									placeholder="TX"
-								></v-text-field>
-								<v-text-field
-									ref="zip"
-									v-model="zip"
-									:rules="[() => !!zip || 'This field is required']"
-									label="ZIP / Postal Code"
-									required
-									placeholder="79938"
-								></v-text-field>
-								<v-autocomplete
-									ref="country"
-									v-model="country"
-									:rules="[() => !!country || 'This field is required']"
-									:items="countries"
-									label="Country"
-									placeholder="Select..."
-									required
-								></v-autocomplete>
-							</v-card-text>
-						</v-col>
-					</v-row>
-				</v-container>
-				<v-card-actions>
-					<v-btn text @click="dialog = false">Cancel</v-btn>
-					<v-spacer></v-spacer>
-					<v-slide-x-reverse-transition>
-						<v-tooltip v-if="formHasErrors" left>
-							<template v-slot:activator="{ on, attrs }">
-								<v-btn icon class="my-0" v-bind="attrs" @click="resetForm" v-on="on">
-									<v-icon>mdi-refresh</v-icon>
-								</v-btn>
-							</template>
-							<span>Refresh form</span>
-						</v-tooltip>
-					</v-slide-x-reverse-transition>
-					<v-btn color="primary" text @click="dialog = false">Submit</v-btn>
-				</v-card-actions>
-			</v-card>
+			<v-form ref="form" v-model="valid" @submit.prevent="onSubmit">
+				<v-card dense>
+					<v-card-title>Nova Obra</v-card-title>
+					<v-card-text>
+						<v-text-field v-model="form.name" label="Nome" :rules="rules.name" required></v-text-field>
+						<v-text-field
+							v-model="form.zip"
+							label="CEP"
+							:rules="rules.zip"
+							counter
+							maxlength="8"
+							required
+						></v-text-field>
+						<v-text-field v-model="form.address" label="Rua" :rules="rules.address" required></v-text-field>
+						<v-text-field v-model="form.number" label="Número" :rules="rules.number" required></v-text-field>
+						<v-text-field v-model="form.district" label="Bairro" :rules="rules.district" required></v-text-field>
+						<v-text-field v-model="form.city" label="Cidade" :rules="rules.city" required></v-text-field>
+						<v-select v-model="form.state" label="Estado" :items="states" :rules="rules.state" required></v-select>
+						<v-textarea v-model="form.info" label="Observação" rows="1" :rules="rules.info" counter="256"></v-textarea>
+					</v-card-text>
+
+					<v-card-actions>
+						<v-spacer></v-spacer>
+						<v-btn @click="dialog = false">Cancelar</v-btn>
+						<v-btn color="primary" type="onSubmit" :disabled="!valid">Salvar</v-btn>
+					</v-card-actions>
+				</v-card>
+			</v-form>
 		</v-dialog>
+		<!-- <WorkForm :dialog="dialog" url="works/" @modal="dialog = $event" /> -->
 	</v-container>
 </template>
 
 <script>
+import WorkTable from "../components/Table";
+// import WorkForm from "../components/Form";
 export default {
 	name: "Work",
-	props: {
-		obras: Array
-	},
+	components: { WorkTable },
 	data: () => ({
 		dialog: false,
-		works: [
+		valid: true,
+		rules: {
+			name: [v => !!v || "Campo nome é obrigatório"],
+			zip: [
+				v => !!v || "Campo CEP é obrigatório",
+				v => (v && v.length <= 8) || "CEP deve ter 8 characters"
+			],
+			address: [v => !!v || "Campo rua é obrigatório"],
+			number: [v => !!v || "Campo número é obrigatório"],
+			district: [v => !!v || "Campo bairro é obrigatório"],
+			city: [v => !!v || "Campo cidade é obrigatório"],
+			state: [v => !!v || "Campo estado é obrigatório"],
+			info: [
+				v =>
+					(v && v.length <= 256) ||
+					"Observação deve ter no máximo 256 characters"
+			]
+		},
+		form: {},
+		headers: [
 			{
-				id: 12232,
-				name: "nome da obra",
-				status: "ativa",
-				cep: 88140000,
-				rua: "rua",
-				numero: 123,
-				complemento: "",
-				bairro: "",
-				municipio: "",
-				ponto_de_referencia: "",
-				info: ""
+				text: "Nome",
+				value: "name"
+			},
+			{
+				text: "CEP",
+				value: "zip",
+				sortable: false
+			},
+			{
+				text: "Rua",
+				value: "address",
+				sortable: false
+			},
+			{
+				text: "Número",
+				value: "number",
+				sortable: false
+			},
+			{
+				text: "Bairro",
+				value: "district",
+				sortable: false
+			},
+			{
+				text: "Cidade",
+				value: "city",
+				sortable: false
+			},
+			{
+				text: "Opções",
+				value: "actions",
+				sortable: false
 			}
 		],
-		countries: [
-			"Afghanistan",
-			"Albania",
-			"Algeria",
-			"Andorra",
-			"Angola",
-			"Anguilla",
-			"Antigua &amp; Barbuda",
-			"Argentina",
-			"Armenia",
-			"Aruba",
-			"Australia",
-			"Austria",
-			"Azerbaijan",
-			"Bahamas",
-			"Bahrain",
-			"Bangladesh",
-			"Barbados",
-			"Belarus",
-			"Belgium",
-			"Belize",
-			"Benin",
-			"Bermuda",
-			"Bhutan",
-			"Bolivia",
-			"Bosnia &amp; Herzegovina",
-			"Botswana",
-			"Brazil",
-			"British Virgin Islands",
-			"Brunei",
-			"Bulgaria",
-			"Burkina Faso",
-			"Burundi",
-			"Cambodia",
-			"Cameroon",
-			"Cape Verde",
-			"Cayman Islands",
-			"Chad",
-			"Chile",
-			"China",
-			"Colombia",
-			"Congo",
-			"Cook Islands",
-			"Costa Rica",
-			"Cote D Ivoire",
-			"Croatia",
-			"Cruise Ship",
-			"Cuba",
-			"Cyprus",
-			"Czech Republic",
-			"Denmark",
-			"Djibouti",
-			"Dominica",
-			"Dominican Republic",
-			"Ecuador",
-			"Egypt",
-			"El Salvador",
-			"Equatorial Guinea",
-			"Estonia",
-			"Ethiopia",
-			"Falkland Islands",
-			"Faroe Islands",
-			"Fiji",
-			"Finland",
-			"France",
-			"French Polynesia",
-			"French West Indies",
-			"Gabon",
-			"Gambia",
-			"Georgia",
-			"Germany",
-			"Ghana",
-			"Gibraltar",
-			"Greece",
-			"Greenland",
-			"Grenada",
-			"Guam",
-			"Guatemala",
-			"Guernsey",
-			"Guinea",
-			"Guinea Bissau",
-			"Guyana",
-			"Haiti",
-			"Honduras",
-			"Hong Kong",
-			"Hungary",
-			"Iceland",
-			"India",
-			"Indonesia",
-			"Iran",
-			"Iraq",
-			"Ireland",
-			"Isle of Man",
-			"Israel",
-			"Italy",
-			"Jamaica",
-			"Japan",
-			"Jersey",
-			"Jordan",
-			"Kazakhstan",
-			"Kenya",
-			"Kuwait",
-			"Kyrgyz Republic",
-			"Laos",
-			"Latvia",
-			"Lebanon",
-			"Lesotho",
-			"Liberia",
-			"Libya",
-			"Liechtenstein",
-			"Lithuania",
-			"Luxembourg",
-			"Macau",
-			"Macedonia",
-			"Madagascar",
-			"Malawi",
-			"Malaysia",
-			"Maldives",
-			"Mali",
-			"Malta",
-			"Mauritania",
-			"Mauritius",
-			"Mexico",
-			"Moldova",
-			"Monaco",
-			"Mongolia",
-			"Montenegro",
-			"Montserrat",
-			"Morocco",
-			"Mozambique",
-			"Namibia",
-			"Nepal",
-			"Netherlands",
-			"Netherlands Antilles",
-			"New Caledonia",
-			"New Zealand",
-			"Nicaragua",
-			"Niger",
-			"Nigeria",
-			"Norway",
-			"Oman",
-			"Pakistan",
-			"Palestine",
-			"Panama",
-			"Papua New Guinea",
-			"Paraguay",
-			"Peru",
-			"Philippines",
-			"Poland",
-			"Portugal",
-			"Puerto Rico",
-			"Qatar",
-			"Reunion",
-			"Romania",
-			"Russia",
-			"Rwanda",
-			"Saint Pierre &amp; Miquelon",
-			"Samoa",
-			"San Marino",
-			"Satellite",
-			"Saudi Arabia",
-			"Senegal",
-			"Serbia",
-			"Seychelles",
-			"Sierra Leone",
-			"Singapore",
-			"Slovakia",
-			"Slovenia",
-			"South Africa",
-			"South Korea",
-			"Spain",
-			"Sri Lanka",
-			"St Kitts &amp; Nevis",
-			"St Lucia",
-			"St Vincent",
-			"St. Lucia",
-			"Sudan",
-			"Suriname",
-			"Swaziland",
-			"Sweden",
-			"Switzerland",
-			"Syria",
-			"Taiwan",
-			"Tajikistan",
-			"Tanzania",
-			"Thailand",
-			"Timor L'Este",
-			"Togo",
-			"Tonga",
-			"Trinidad &amp; Tobago",
-			"Tunisia",
-			"Turkey",
-			"Turkmenistan",
-			"Turks &amp; Caicos",
-			"Uganda",
-			"Ukraine",
-			"United Arab Emirates",
-			"United Kingdom",
-			"United States",
-			"Uruguay",
-			"Uzbekistan",
-			"Venezuela",
-			"Vietnam",
-			"Virgin Islands (US)",
-			"Yemen",
-			"Zambia",
-			"Zimbabwe"
-		],
-		errorMessages: "",
-		name: null,
-		address: null,
-		city: null,
-		state: null,
-		zip: null,
-		country: null,
-		formHasErrors: false
+		works: [],
+		states: [
+			"AC",
+			"AL",
+			"AP",
+			"AM",
+			"BA",
+			"CE",
+			"DF",
+			"ES",
+			"GO",
+			"MA",
+			"MT",
+			"MS",
+			"MG",
+			"PA",
+			"PB",
+			"PR",
+			"PE",
+			"PI",
+			"RJ",
+			"RN",
+			"RS",
+			"RO",
+			"RR",
+			"SC",
+			"SP",
+			"SE",
+			"TO"
+		]
 	}),
-	computed: {
-		form() {
-			return {
-				name: this.name,
-				address: this.address,
-				city: this.city,
-				state: this.state,
-				zip: this.zip,
-				country: this.country
-			};
-		}
-	},
-
-	watch: {
-		name() {
-			this.errorMessages = "";
-		}
-	},
-
 	methods: {
+		add() {
+			this.dialog = true;
+		},
+		editWork(item) {
+			this.form = item;
+			this.dialog = true;
+		},
+		deleteWork(item) {
+			const index = this.works.indexOf(item);
+			confirm("Você tem certesa que quer excluir a obra?") &&
+				this.works.splice(index, 1);
+		},
+		onSubmit() {
+			if (this.$refs.form.validate()) {
+				this.works.push(this.form);
+				this.dialog = false;
+			}
+		},
+		load() {
+			this.works = [
+				{
+					name: "nome da obra 1",
+					zip: 88909230,
+					address: "Rua Maria",
+					number: 1230,
+					district: "Bairro",
+					city: "Florianópolis",
+					state: "SC",
+					info: "algum texto..."
+				},
+				{
+					name: "nome da obra 2",
+					zip: 88140000,
+					address: "Rua Maria",
+					number: 4552,
+					district: "Bairro",
+					city: "Florianópolis",
+					state: "SC",
+					info: "algum texto..."
+				},
+				{
+					name: "nome da obra 3",
+					zip: 88140000,
+					address: "Rua Maria",
+					number: 4552,
+					district: "Bairro",
+					city: "Florianópolis",
+					state: "SC",
+					info: "algum texto..."
+				},
+				{
+					name: "nome da obra 4",
+					zip: 88140000,
+					address: "Rua Maria",
+					number: 4552,
+					district: "Bairro",
+					city: "Florianópolis",
+					state: "SC",
+					info: "algum texto..."
+				},
+				{
+					name: "nome da obra 5",
+					zip: 88140000,
+					address: "Rua Maria",
+					number: 4552,
+					district: "Bairro",
+					city: "Florianópolis",
+					state: "SC",
+					info: "algum texto..."
+				},
+				{
+					name: "nome da obra 6",
+					zip: 88140000,
+					address: "Rua Maria",
+					number: 4552,
+					district: "Bairro",
+					city: "Florianópolis",
+					state: "SC",
+					info: "algum texto..."
+				},
+				{
+					name: "nome da obra 7",
+					zip: 88140000,
+					address: "Rua Maria",
+					number: 4552,
+					district: "Bairro",
+					city: "Florianópolis",
+					state: "SC",
+					info: "algum texto..."
+				}
+			];
+		}
+		// edit(item) {
+		// 	this.form = item;
+		// 	this.dialog = true;
+		// },
+		// update() {
+		// 	this.form = {};
+		// },
+		// async remove(item) {
+		// 	if (confirm("Tem certeza que quer excluir?")) {
+		// 		const { id } = item;
+		// 		try {
+		// 			this.works[id];
+		// 		} catch (e) {
+		// 			console.error(e);
+		// 		}
+		// 	}
+		// }
+	},
+	mounted() {
+		this.load();
+	},
+	watch: {
+		dialog(value) {
+			if (!value) {
+				this.form = {};
+				this.$refs.form.resetValidation();
+			}
+		}
 	}
 };
 </script>
